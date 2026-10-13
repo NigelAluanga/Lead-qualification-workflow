@@ -1,0 +1,427 @@
+{
+  "name": "Lead qualification workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-workflow",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        16
+      ],
+      "id": "304e4373-3e28-4614-bbbf-518c522007d6",
+      "name": "Webhook",
+      "webhookId": "c079af65-2239-4c9a-bb3d-d7d98f5d0dc7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c472ae1f-380c-405c-86d7-a7aa01e9c8f4",
+              "name": "name",
+              "value": "={{ $json.body.data.fields[0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "c39f9047-5a1e-448f-b38b-580c34e885e0",
+              "name": "phone number",
+              "value": "={{ $json.body.data.fields[1].value }}",
+              "type": "string"
+            },
+            {
+              "id": "edbc1353-d15e-44d2-866a-e66ef2a91d0f",
+              "name": "email",
+              "value": "={{ $json.body.data.fields[2].value }}",
+              "type": "string"
+            },
+            {
+              "id": "11f69ac2-4c67-4e44-b1c3-c3deeecfd2e5",
+              "name": "inquiry",
+              "value": "={{ $json.body.data.fields[3].value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        16
+      ],
+      "id": "c04fe85e-b7f2-4fca-8050-26d1c9ccbfac",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=# ROLE\nYou are an AI Sales Assistant and Lead Qualification Specialist for a clothing brand. Your job is to respond professionally to customer inquiries, understand their purchasing intent, and classify each lead as HOT or COLD.\n\n# OBJECTIVES\nFor every customer inquiry, you must:\n1. Analyze the customer's message and identify their needs.\n2. Generate a friendly, personalized, professional response that addresses their inquiry.\n3. Determine whether the customer is a HOT or COLD lead based on their purchase intent.\n4. Provide a brief explanation for your classification.\n5. Recommend the next action the sales team should take.\n\n# LEAD QUALIFICATION CRITERIA\n\nClassify a lead as HOT if the customer:\n- Expresses a clear intention to purchase.\n- Asks how to place an order or proceed with checkout.\n- Asks about payment methods, delivery arrangements, or shipping in the context of a purchase.\n- Requests bulk orders, multiple items, or a quotation with a clear buying intention.\n- Asks about product availability, sizes, colours, or prices and shows strong interest in purchasing.\n- Indicates they want to buy soon or provides a specific purchasing timeline.\n\nClassify a lead as COLD if the customer:\n- Is only browsing or casually exploring the brand.\n- Requests general information without showing a clear intention to purchase.\n- Asks about fashion trends or products out of curiosity.\n- Explicitly states they are not ready to buy.\n- Shows no meaningful purchase intent in their inquiry.\n\nIMPORTANT:\n- Do not classify a customer as HOT based on a greeting alone.\n- Do not assume that asking about price automatically means the customer is ready to buy.\n- Consider the entire message and the strength of the customer's buying signals.\n- If information is limited or the customer's intent is unclear, classify the lead as COLD until stronger buying signals emerge.\n- Never invent product prices, sizes, colours, stock availability, delivery timelines, discounts, or payment options. If this information is unavailable, politely ask the customer for clarification or explain that the team will confirm it.\n\n# RESPONSE GENERATION RULES\n- Be warm, helpful, professional, and persuasive without being pushy.\n- Address the customer's actual question before attempting to sell.\n- Personalize the response using the information provided in the inquiry.\n- Ask a relevant follow-up question where necessary, such as the desired size, colour, quantity, budget, or delivery location.\n- For HOT leads, guide the customer toward the next purchasing step.\n- For COLD leads, provide helpful information and encourage further engagement without applying pressure.\n- Do not mention the internal lead classification to the customer.\n- Do not promise anything that has not been confirmed by the business.\n\n# OUTPUT FORMAT\nReturn ONLY a valid JSON object with the following fields:\n\n{\n  \"customer_response\": \"The message to send to the customer\",\n  \"lead_status\": \"HOT or COLD\",\n  \"lead_score\": 0,\n  \"qualification_reason\": \"A brief explanation of why the lead received this classification\",\n  \"purchase_intent\": \"High, Medium, or Low\",\n  \"next_action\": \"The recommended action for the sales team\"\n}\n\n# SCORING GUIDELINES\nAssign a lead score from 0 to 100:\n- 0–39: COLD lead\n- 40–69: COLD lead; moderate interest but insufficient buying intent\n- 70–100: HOT lead\n\nUse the following signals to guide scoring:\n- Explicit intention to purchase: high positive score.\n- Asking how to order or pay: high positive score.\n- Specific product, size, colour, quantity, or delivery requirements: positive score.\n- A stated near-term purchasing timeline: positive score.\n- General browsing or vague questions: low score.\n- Explicit lack of purchase intent: very low score.\n\nEnsure the lead_status is HOT only when the lead_score is 70 or above. Otherwise, return COLD.\n\n# CUSTOMER INQUIRY\nCustomer name: {{ $json.name }}\nCustomer message:{{ $json.inquiry }} \n\n# FINAL INSTRUCTION\nAnalyze the inquiry and return only the JSON object. Do not include Markdown, code fences, or additional commentary."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        16
+      ],
+      "id": "ad4775b4-5b84-4ce2-aed5-5a6dfefcd8fc",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "bIHKqayiDWL62m84",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst output = $input.first().json;\n\n// Extract the AI response text from the Gemini node\nlet text = output.content?.parts?.[0]?.text;\n\nif (!text) {\n  throw new Error(\"AI response text was not found. Check the Gemini node output.\");\n}\n\n// Remove Markdown code fences if the model included them\ntext = text\n  .replace(/^```(?:json)?\\s*/i, \"\")\n  .replace(/\\s*```$/, \"\")\n  .trim();\n\n// Parse the JSON string into an object\nlet parsed;\n\ntry {\n  parsed = JSON.parse(text);\n} catch (error) {\n  throw new Error(\n    \"Could not parse the AI response as JSON. Check whether Gemini returned valid, complete JSON. Response: \" +\n    text\n  );\n}\n\n// Validate the required fields\nconst requiredFields = [\n  \"customer_response\",\n  \"lead_status\",\n  \"lead_score\",\n  \"qualification_reason\",\n  \"purchase_intent\",\n  \"next_action\"\n];\n\nfor (const field of requiredFields) {\n  if (parsed[field] === undefined || parsed[field] === null) {\n    throw new Error(`Missing required AI output field: ${field}`);\n  }\n}\n\n// Normalize the lead status\nconst leadStatus = String(parsed.lead_status).toUpperCase();\n\nif (![\"HOT\", \"COLD\"].includes(leadStatus)) {\n  throw new Error(`Invalid lead status: ${parsed.lead_status}`);\n}\n\n// Return separate fields for easy mapping\nreturn [\n  {\n    json: {\n      customer_response: parsed.customer_response,\n      lead_status: leadStatus,\n      lead_score: Number(parsed.lead_score),\n      qualification_reason: parsed.qualification_reason,\n      purchase_intent: parsed.purchase_intent,\n      next_action: parsed.next_action\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        16
+      ],
+      "id": "71651b6a-b5b9-4515-b6f6-1f024e362ef0",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.lead_status }}",
+                    "rightValue": "COLD",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6b84b5e8-a590-4cf7-8ae7-ee3646f89235"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cold leads"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7d3fd918-274a-4897-9d05-8b7c7516d288",
+                    "leftValue": "={{ $json.lead_score }}",
+                    "rightValue": 55,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ready to buy"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "93d86a29-f3a1-481c-8e1b-be165be210fd",
+                    "leftValue": "={{ $json.purchase_intent }}",
+                    "rightValue": "Medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "37c2f07a-751d-4a19-b71b-b014c51e266d",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Edit Fields').item.json.email }}",
+        "subject": "Inquiry has been received",
+        "message": "={{ $('Code in JavaScript').item.json.customer_response }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        16
+      ],
+      "id": "9eea0a08-e1f2-4840-ad18-4fafe4c09702",
+      "name": "Send a message",
+      "webhookId": "f9c1ae47-9102-4db4-ac9a-a441a683e6d8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3rHAohyGvEt6zzv8",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "16Srzx-Wh-e4fSDPn17kpMl6lPuXKP6ubmR4WQHTvgHE",
+          "mode": "list",
+          "cachedResultName": "Lead Data Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Srzx-Wh-e4fSDPn17kpMl6lPuXKP6ubmR4WQHTvgHE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Srzx-Wh-e4fSDPn17kpMl6lPuXKP6ubmR4WQHTvgHE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Edit Fields').item.json.name }}",
+            "Phone number": "={{ $('Edit Fields').item.json['phone number'] }}",
+            "Email": "={{ $('Edit Fields').item.json.email }}",
+            "Lead status": "={{ $('Switch').item.json.lead_status }}",
+            "Lead score": "={{ $('Switch').item.json.lead_score }}",
+            "Purchasing intent": "={{ $('Switch').item.json.purchase_intent }}",
+            "Next action": "={{ $('Switch').item.json.next_action }}",
+            "Response": "={{ $('Switch').item.json.customer_response }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone number",
+              "displayName": "Phone number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead status",
+              "displayName": "Lead status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead score",
+              "displayName": "Lead score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purchasing intent",
+              "displayName": "Purchasing intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Next action",
+              "displayName": "Next action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Response",
+              "displayName": "Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1328,
+        128
+      ],
+      "id": "827b8825-6bc3-462e-8f9f-e58ff3fa2f27",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "m3ho64qlzx1PeaYy",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        []
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dcede176-4a71-414b-9c24-562facc021bc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "777faad125bcca85a58940cf29800c1109e0156077b6292f7293f26ef0b8cd65"
+  },
+  "nodeGroups": [],
+  "id": "vHF9tTfuDO53Yd1b",
+  "tags": []
+}
